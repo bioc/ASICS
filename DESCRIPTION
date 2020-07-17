@@ -1,7 +1,11 @@
 Package: ASICS
 Type: Package
 Title: Automatic Statistical Identification in Complex Spectra
+<<<<<<< HEAD
 Version: 2.4.1
+=======
+Version: 2.5.2
+>>>>>>> 5e6047a... namespace file
 Authors@R: c(
     person("Gaëlle", "Lefort", email = "gaelle.lefort@inra.fr", role = c("aut", "cre")),
     person("Rémi", "Servien", email = "remi.servien@inra.fr", role = "aut"),
@@ -53,6 +57,7 @@ Collate:
     'load_data.R'
     'plotAlignment.R'
     'plot_spectrum.R'
+    'simulation.R'
     'user_guide.R'
     'utils.R'
 biocViews:
