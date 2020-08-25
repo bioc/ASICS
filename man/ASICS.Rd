@@ -9,11 +9,17 @@ ASICS(
   exclusion.areas = matrix(c(4.5, 5.1), ncol = 2),
   max.shift = 0.02,
   pure.library = NULL,
-  threshold.noise = 0.02,
-  combine = TRUE,
+  noise.thres = 0.02,
+  joint.align = TRUE,
   seed = 1234,
   ncores = 1,
-  verbose = TRUE
+  verbose = TRUE,
+  add.noise = 0.15,
+  mult.noise = 0.172,
+  quantif.method = c("FWER", "Lasso", "both"),
+  clean.thres = 0,
+  ref.spectrum = NULL,
+  alignment.method = "asics"
 )
 }
 \arguments{
@@ -30,9 +36,9 @@ for the quantification (ppm). By default, the water region is excluded
 the reference spectra (pure metabolite spectra). If \code{NULL}, the library
 included in the package (that contains 191 reference spectra) is used.}
 
-\item{threshold.noise}{Threshold for signal noise. Default to 0.02.}
+\item{noise.thres}{Threshold for signal noise. Default to 0.02.}
 
-\item{combine}{Logical. If \code{TRUE}, information from all spectra are
+\item{joint.align}{Logical. If \code{TRUE}, information from all spectra are
 taken into account to align individual library.}
 
 \item{seed}{Random seed to control randomness in the algorithm (used in the
@@ -65,7 +71,7 @@ spectra_obj <- createSpectra(spectra_data)
 
 # Estimation of relative quantifications
 to_exclude <- matrix(c(4.5, 10), ncol = 2)
-resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude, combine = FALSE)
+resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude, joint.align = FALSE)
 }
 \references{
 Tardivel P., Canlet C., Lefort G., Tremblay-Franco M., Debrauwer

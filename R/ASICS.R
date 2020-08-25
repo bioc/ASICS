@@ -12,8 +12,8 @@
 #' @param pure.library An object of class \linkS4class{PureLibrary} containing
 #' the reference spectra (pure metabolite spectra). If \code{NULL}, the library
 #' included in the package (that contains 191 reference spectra) is used.
-#' @param threshold.noise Threshold for signal noise. Default to 0.02.
-#' @param combine Logical. If \code{TRUE}, information from all spectra are
+#' @param noise.thres Threshold for signal noise. Default to 0.02.
+#' @param joint.align Logical. If \code{TRUE}, information from all spectra are
 #' taken into account to align individual library.
 #' @param seed Random seed to control randomness in the algorithm (used in the
 #' estimation of the significativity of a given metabolite concentration).
@@ -50,12 +50,15 @@
 #'
 #' # Estimation of relative quantifications
 #' to_exclude <- matrix(c(4.5, 10), ncol = 2)
-#' resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude, combine = FALSE)
+#' resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude, joint.align = FALSE)
 ASICS <- function(spectra_obj,
                   exclusion.areas = matrix(c(4.5, 5.1), ncol = 2),
                   max.shift = 0.02, pure.library = NULL,
-                  threshold.noise = 0.02, combine = TRUE, seed = 1234,
-                  ncores = 1, verbose = TRUE) {
+                  noise.thres = 0.02, joint.align = TRUE, seed = 1234,
+                  ncores = 1, verbose = TRUE,
+                  add.noise = 0.15, mult.noise = 0.172,
+                  quantif.method = c("FWER", "Lasso", "both"),
+                  clean.thres = 0, ref.spectrum = NULL, alignment.method = "asics") {
 
   if(!is.null(exclusion.areas) &&
      (!is.matrix(exclusion.areas) | ncol(exclusion.areas) != 2)){
@@ -66,8 +69,8 @@ ASICS <- function(spectra_obj,
     stop("'max.shift' must be non negative.")
   }
 
-  if(threshold.noise < 0){
-    stop("'threshold.noise' must be non negative.")
+  if(noise.thres < 0){
+    stop("'noise.thres' must be non negative.")
   }
 
   if(!is(pure.library, "PureLibrary") & !is.null(pure.library)){
@@ -76,8 +79,10 @@ ASICS <- function(spectra_obj,
   }
 
   res_estimation <- .ASICSInternal(spectra_obj, exclusion.areas, max.shift,
-                                   pure.library, threshold.noise,  seed, ncores,
-                                   combine, verbose)
+                                   pure.library, noise.thres,  seed, ncores,
+                                   joint.align, verbose, add.noise, mult.noise,
+                                   quantif.method, clean.thres, ref.spectrum,
+                                   alignment.method)
 
   return(res_estimation)
 }
@@ -88,112 +93,280 @@ ASICS <- function(spectra_obj,
 .ASICSInternal <- function(spectra_obj_raw,
                            exclusion.areas = matrix(c(4.5, 5.1), ncol = 2),
                            max.shift = 0.02, pure.library = NULL,
-                           threshold.noise = 0.02, seed = 1234, ncores = 1,
-                           combine = TRUE, verbose = TRUE){
+                           noise.thres = 0.02, seed = 1234, ncores = 1,
+                           joint.align = TRUE, verbose = TRUE,
+                           add.noise = 0.15, mult.noise = 0.172,
+                           quantif.method = c("FWER", "Lasso", "both"),
+                           clean.thres = 1, ref.spectrum = NULL,
+                           alignment.method = "asics") {
 
-  # seed and parallel environment
-  set.seed(seed)
+    # seed and parallel environment
+    set.seed(seed)
 
-  # default library or not
-  if(is.null(pure.library)){
-    pure.library <- ASICS::pure_library
-  }
+    # default library or not
+    if(is.null(pure.library)){
+      pure.library <- ASICS::pure_library
+    }
 
-  # spectra object as a list where each element are 1 spectrum
-  spectra_list <- lapply(seq_along(spectra_obj_raw),
-                         function(x) spectra_obj_raw[x])
+    # spectra object as a list where each element are 1 spectrum
+    spectra_list <- lapply(seq_along(spectra_obj_raw),
+                           function(x) spectra_obj_raw[x])
 
 
-  #-----------------------------------------------------------------------------
-  #### Remove areas from spectrum and library ####
-  if (verbose) cat("Remove areas from spectrum and library \n")
-  spectra_obj <- bplapply(spectra_list, .removeAreas, exclusion.areas,
-                          pure.library,
-                          BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-                                               verbose))
-
-  # number of points on library grid corresponding to maximum shift
-  if (length(spectra_list) == 1 | !combine) {
-    nb_points_shift <-
-      floor(max.shift / (spectra_obj[[1]][["cleaned_library"]]@ppm.grid[2] -
-                           spectra_obj[[1]][["cleaned_library"]]@ppm.grid[1]))
-  } else {
-    max.shift <- seq_len(5) * max.shift / 5
-    nb_points_shift <-
-      floor(max.shift / (spectra_obj[[1]][["cleaned_library"]]@ppm.grid[2] -
-                           spectra_obj[[1]][["cleaned_library"]]@ppm.grid[1]))
-  }
-
-  #-----------------------------------------------------------------------------
-  #### Cleaning step: remove metabolites that cannot belong to the mixture ####
-  if (verbose) cat("Remove metabolites that cannot belong to the mixture \n")
-  spectra_obj <- bplapply(spectra_obj, .cleanLibrary, threshold.noise,
-                          nb_points_shift[length(nb_points_shift)],
-                          BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-                                               verbose))
-
-  #-----------------------------------------------------------------------------
-  #### Find the best translation between each pure spectra and mixture ####
-  #and sort metabolites by regression residuals
-
-  # compute weights
-  s1 <- 0.172 #standard deviation of multiplicative noise
-  s2 <- 0.15 #standard deviation of additive noise
-  if (verbose) cat("Compute weights \n")
-  spectra_obj <-
-    bplapply(spectra_obj,
-             function(x){x[["mixture_weights"]] <-
-               as.numeric(1 / (abs(x[["cleaned_spectrum"]]@spectra) *
-                                 s1 ^ 2 + s2 ^ 2)); return(x)},
-             BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-                                  verbose))
-
-  if (verbose) cat("Translate library \n")
-  if (length(spectra_list) == 1 | !combine) {
-    spectra_obj <- bplapply(spectra_obj, .translateLibrary,
-                            nb_points_shift[length(nb_points_shift)],
-                            max.shift[length(max.shift)],
+    #-----------------------------------------------------------------------------
+    #### Remove areas from spectrum and library ####
+    if (verbose) cat("Remove areas from spectrum and library \n")
+    spectra_obj <- bplapply(spectra_list, .removeAreas, exclusion.areas,
+                            pure.library,
                             BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
                                                  verbose))
-  } else {
-    # spectra binning
-    spectra_to_bin <- data.frame(as.matrix(getSpectra(spectra_obj_raw)))
-    rownames(spectra_to_bin) <- spectra_obj_raw@ppm.grid
-    norm.param <- c(list(spectra = spectra_to_bin,
-                         exclusion.areas = exclusion.areas,
-                         ncores = ncores,
-                         bin = 0.001,
-                         verbose = FALSE,
-                         type.norm = spectra_obj_raw@norm.method),
-                    spectra_obj_raw@norm.params)
-    spec_bin <- do.call("binning", norm.param)
 
-    spec_bin <- spec_bin[rowSums(spec_bin) != 0, ]
+    # number of points on library grid corresponding to maximum shift
+    if (length(spectra_list) == 1 | !joint.align) {
+      nb_points_shift <-
+        floor(max.shift / (spectra_obj[[1]][["cleaned_library"]]@ppm.grid[2] -
+                             spectra_obj[[1]][["cleaned_library"]]@ppm.grid[1]))
+    } else {
+      max.shift <- seq_len(5) * max.shift / 5
+      nb_points_shift <-
+        floor(max.shift / (spectra_obj[[1]][["cleaned_library"]]@ppm.grid[2] -
+                             spectra_obj[[1]][["cleaned_library"]]@ppm.grid[1]))
+    }
 
-    spectra_obj <- .translateLibrary_combineVersion(spectra_obj, max.shift,
-                                                 nb_points_shift, spec_bin,
-                                                 pure.library, ncores,
-                                                 length(spectra_obj_raw),
-                                                 verbose)
+    # compute weights
+    if (verbose) cat("Compute weights \n")
+    spectra_obj <-
+      bplapply(spectra_obj,
+               function(x){x[["mixture_weights"]] <-
+                 as.numeric(1 / (abs(x[["cleaned_spectrum"]]@spectra) *
+                                   mult.noise ^ 2 + add.noise ^ 2)); return(x)},
+               BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                    verbose))
+
+    #-----------------------------------------------------------------------------
+    #### Cleaning step: remove metabolites that cannot belong to the mixture ####
+    pure_lib_raw <- spectra_obj[[1]]$cleaned_library
+    if (quantif.method %in% c("FWER", "both")) {
+      if (verbose) cat("Remove metabolites that cannot belong to the mixture \n")
+      spectra_obj <- bplapply(spectra_obj, .cleanLibrary, noise.thres,
+                              nb_points_shift[length(nb_points_shift)],
+                              BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                                   verbose))
+    }
+
+    if (quantif.method == "Lasso") {
+      if (verbose) cat("Remove metabolites that cannot belong to the mixture \n")
+      spectra_obj <- bplapply(spectra_obj, .cleanLibrary, noise.thres,
+                              nb_points_shift[length(nb_points_shift)],
+                              BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                                   verbose))
+
+      metab_list <- unlist(bplapply(spectra_obj,
+                                    function(x) x$cleaned_library@sample.name,
+                                    BPPARAM = .createEnv(ncores,
+                                                         length(spectra_obj_raw),
+                                                         verbose)))
+      metab_list_th <-
+        names(table(metab_list)[table(metab_list) >= clean.thres])
+
+      spectra_obj <- bplapply(spectra_obj,
+            function(x) {
+              x$cleaned_library <-
+                pure_lib_raw[pure_lib_raw@sample.name %in% metab_list_th];
+              return(x)},
+            BPPARAM = .createEnv(ncores, length(spectra_obj_raw), verbose))
+    }
+
+      #-----------------------------------------------------------------------------
+      #### Find the best translation between each pure spectra and mixture ####
+      #and sort metabolites by regression residuals
+      if (quantif.method %in% c("FWER", "Lasso", "both")) {
+        if (verbose) cat("Translate library \n")
+        if (length(spectra_list) == 1 | !joint.align) {
+          if(alignment.method == "speaq") {
+            # spectra_obj <- bplapply(spectra_obj, .translateLibrary_speaq,
+            #                         nb_points_shift[length(nb_points_shift)],
+            #                         max.shift[length(max.shift)],
+            #                         BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+            #                                              verbose))
+          } else if(alignment.method == "icoshift") {
+            spectra_obj <- bplapply(spectra_obj, .translateLibrary_icoshift,
+                                    nb_points_shift[length(nb_points_shift)],
+                                    max.shift[length(max.shift)],
+                                    BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                                         verbose))
+          } else {
+            spectra_obj <- bplapply(spectra_obj, .translateLibrary,
+                                    nb_points_shift[length(nb_points_shift)],
+                                    max.shift[length(max.shift)],
+                                    BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                                         verbose))
+          }
+        } else {
+          # spectra binning
+          spectra_to_bin <- data.frame(as.matrix(getSpectra(spectra_obj_raw)))
+          rownames(spectra_to_bin) <- spectra_obj_raw@ppm.grid
+          norm.param <- c(list(spectra = spectra_to_bin,
+                               exclusion.areas = exclusion.areas,
+                               ncores = ncores,
+                               bin = 0.001,
+                               verbose = FALSE,
+                               type.norm = spectra_obj_raw@norm.method),
+                          spectra_obj_raw@norm.params)
+          spec_bin <- do.call("binning", norm.param)
+          spec_bin <- spec_bin[rowSums(spec_bin) != 0, ]
+
+          spectra_obj <- .translateLibrary_combineVersion(spectra_obj, max.shift,
+                                                          nb_points_shift, spec_bin,
+                                                          pure.library, ncores,
+                                                          length(spectra_obj_raw),
+                                                          verbose)
+        }
+      }
+
+      #-----------------------------------------------------------------------------
+      #### Localized deformations of pure spectra ####
+      if (quantif.method %in% c("FWER", "both")) {
+        if (verbose) cat("Deform library peaks \n")
+        if(alignment.method == "asics") {
+        spectra_obj <- bplapply(spectra_obj, .deformLibrary,
+                                BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                                     verbose))
+        }
+      }
+
+    #-----------------------------------------------------------------------------
+    #### Threshold and concentration optimisation for each metabolites
+    # with FWER method ####
+    if (quantif.method %in% c("FWER", "both")) {
+      if (verbose) cat("Compute quantifications \n")
+      spectra_obj <- bplapply(spectra_obj, .concentrationOpti_FWER,
+                            BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
+                                                 verbose))
+    }
+
+    #-----------------------------------------------------------------------------
+    #### Cleaning step (on FWER results): remove metabolites that cannot ####
+    #### belong to the mixture ####
+    if (quantif.method %in% c("both")) {
+      if (verbose) cat("Remove metabolites that cannot belong to the mixture \n")
+
+      metab_list <- unlist(bplapply(spectra_obj,
+                                    function(x) x$cleaned_library@sample.name,
+                                    BPPARAM = .createEnv(ncores,
+                                                         length(spectra_obj_raw),
+                                                         verbose)))
+      metab_list_th <-
+        names(table(metab_list)[table(metab_list) >= clean.thres])
+    }
+
+  #-----------------------------------------------------------------------------
+  #### (method: Lasso + both) Mean translation between each pure
+  #spectra and mixture and sort metabolites by regression residuals
+  if (quantif.method %in% c("Lasso", "both")) {
+    pure_lib <- pure_lib_raw[pure_lib_raw@sample.name %in% metab_list_th]
+
+    if (verbose) cat("Translate library of the new cleaned spectra \n")
+    shift <- bplapply(as.list(seq_along(spectra_obj)),
+                      function(x) {
+        res <- data.frame(metab = spectra_obj[[x]]$cleaned_library@sample.name,
+                          shift = spectra_obj[[x]]$shift);
+        colnames(res)[2] <- paste0("shift", x);
+        return(res)},
+                      BPPARAM = .createEnv(ncores,
+                                           length(spectra_obj_raw),
+                                           verbose))
+
+    shifts <- join_all(shift, by = "metab", type = "full")
+    rownames(shifts) <- shifts$metab
+    shifts$metab <- NULL
+
+    shift_by_metab <- apply(shifts, 1, median, na.rm = TRUE)
+    shift_by_metab <-
+      floor(shift_by_metab /
+              (spectra_obj[[1]][["cleaned_library"]]@ppm.grid[2] -
+                 spectra_obj[[1]][["cleaned_library"]]@ppm.grid[1]))
+
+    shift_by_metab <-
+      shift_by_metab[names(shift_by_metab) %in% pure_lib@sample.name]
+
+    pure_lib@spectra <-
+      Matrix(do.call("cbind",
+                     lapply(seq_along(pure_lib),
+                            function(idx)
+                              .doShift(pure_lib@spectra[, idx],
+                                       shift_by_metab[pure_lib@sample.name[idx]],
+                                       0, 0))))
   }
 
-  #-----------------------------------------------------------------------------
   #### Localized deformations of pure spectra ####
-  if (verbose) cat("Deform library peaks \n")
-  spectra_obj <- bplapply(spectra_obj, .deformLibrary,
-                          BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-                                               verbose))
+  if (quantif.method %in% c("Lasso", "both")) {
+    if (verbose & is.null(ref.spectrum)) cat("Find the reference spectrum \n")
 
-  #-----------------------------------------------------------------------------
-  #### Threshold and concentration optimisation for each metabolites ####
-  if (verbose) cat("Compute quantifications \n")
-  spectra_obj <- bplapply(spectra_obj, .concentrationOpti,
-                          BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-                                               verbose))
+    if (is.null(ref.spectrum)) {
+      spectra <-
+        as.matrix(do.call("cbind",
+                        lapply(spectra_obj,
+                               function(x) return(x[["cleaned_spectrum"]]@spectra))))
+      ref.spectrum <- .findReference(spectra, ncores, verbose)
+    }
+
+    #max_shift for reference
+    max_shift_all <- bplapply(as.list(seq_along(spectra_obj)),
+                              function(x) {res <- data.frame(metab = spectra_obj[[x]]$cleaned_library@sample.name,
+                                                             max_shift = spectra_obj[[x]]$max_shift); colnames(res)[2] <- paste0("shift", x);
+                                                             return(res)},
+                              BPPARAM = .createEnv(ncores,
+                                                   length(spectra_obj_raw),
+                                                   verbose))
+
+    max_shift_all <- join_all(max_shift_all, by = "metab", type = "full")
+    rownames(max_shift_all) <- max_shift_all$metab
+    max_shift_all$metab <- NULL
+
+    max_shift_by_metab <- apply(max_shift_all, 1, max, na.rm = TRUE)
+    max_shift_by_metab <-
+      max_shift_by_metab[names(max_shift_by_metab) %in% pure_lib@sample.name]
+
+
+    #nb_point_shift for reference
+    nb_point_all <- bplapply(as.list(seq_along(spectra_obj)),
+                              function(x) {res <- data.frame(metab = spectra_obj[[x]]$cleaned_library@sample.name,
+                                                             max_nb_points_shift = spectra_obj[[x]]$max_nb_points_shift); colnames(res)[2] <- paste0("shift", x);
+                                                             return(res)},
+                              BPPARAM = .createEnv(ncores,
+                                                   length(spectra_obj_raw),
+                                                   verbose))
+
+    nb_point_all <- join_all(nb_point_all, by = "metab", type = "full")
+    rownames(nb_point_all) <- nb_point_all$metab
+    nb_point_all$metab <- NULL
+
+    nb_point_by_metab <- apply(nb_point_all, 1, max, na.rm = TRUE)
+    nb_point_by_metab <-
+      nb_point_by_metab[names(nb_point_by_metab) %in% pure_lib@sample.name]
+
+    spectra_obj[[ref.spectrum]]$cleaned_library <- pure_lib
+    spectra_obj[[ref.spectrum]]$shift <- shift_by_metab[pure_lib@sample.name]
+    spectra_obj[[ref.spectrum]]$max_shift <- max_shift_by_metab[pure_lib@sample.name]
+    spectra_obj[[ref.spectrum]]$max_nb_points_shift <- nb_point_by_metab[pure_lib@sample.name]
+
+    if (verbose) cat("Deform library peaks \n")
+    spectra_obj[[ref.spectrum]] <- .deformLibrary(spectra_obj[[ref.spectrum]])
+  }
+
+
+  #### Threshold and concentration optimisation for each metabolites
+  # with Lasso method ####
+  if (quantif.method %in% c("Lasso", "both")) {
+    if (verbose) cat("Compute quantifications \n")
+    spectra_obj <- .concentrationOpti_MRLasso(spectra_obj, ref.spectrum,
+                                              ncores, verbose)
+  }
 
   #-----------------------------------------------------------------------------
   #### Results ####
-  if (verbose) cat("Format results... \n")
+  if (verbose) cat("Format global results... \n")
   sample_name <-
     unlist(vapply(spectra_obj,
                   function(x) return(x[["cleaned_spectrum"]]@sample.name),

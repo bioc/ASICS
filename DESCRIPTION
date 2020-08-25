@@ -16,6 +16,7 @@ Depends: R (>= 3.5)
 Imports:
     BiocParallel,
     ggplot2,
+    glmnet,
     grDevices,
     gridExtra,
     methods,
@@ -53,6 +54,7 @@ Collate:
     'load_data.R'
     'plotAlignment.R'
     'plot_spectrum.R'
+    'simulation.R'
     'user_guide.R'
     'utils.R'
 biocViews:
