@@ -57,7 +57,6 @@
   return(spectrum_obj)
 }
 
-
 ## Find the best translation between each pure spectra and mixture (test of
 ## various max.shift to find the best one) then sort
 # metabolites by regression residuals
@@ -362,8 +361,9 @@
   peaks_extremities <- cbind(min_extremities, max_extremities)
 
   # remove small peak (less than 3 points)
-  peaks_extremities <- t(peaks_extremities[peaks_extremities[, 2] -
-                                            peaks_extremities[, 1] >= 3, ])
+  peaks_extremities <- matrix(peaks_extremities[peaks_extremities[, 2] -
+                                            peaks_extremities[, 1] >= 3, ],
+                              ncol = 2, byrow = FALSE)
 
   if (nrow(peaks_extremities) > 0) {
     # deform on each connected component

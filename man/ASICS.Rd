@@ -9,8 +9,15 @@ ASICS(
   exclusion.areas = matrix(c(4.5, 5.1), ncol = 2),
   max.shift = 0.02,
   pure.library = NULL,
-  threshold.noise = 0.02,
-  combine = TRUE,
+  noise.thres = 0.02,
+  joint.align = TRUE,
+  threshold.noise = NULL,
+  combine = NULL,
+  add.noise = 0.15,
+  mult.noise = 0.172,
+  quantif.method = c("FWER", "Lasso", "both")[1],
+  clean.thres = 1,
+  ref.spectrum = NULL,
   seed = 1234,
   ncores = 1,
   verbose = TRUE
@@ -30,10 +37,36 @@ for the quantification (ppm). By default, the water region is excluded
 the reference spectra (pure metabolite spectra). If \code{NULL}, the library
 included in the package (that contains 191 reference spectra) is used.}
 
-\item{threshold.noise}{Threshold for signal noise. Default to 0.02.}
+\item{noise.thres}{Threshold for signal noise. Default to 0.02.}
 
-\item{combine}{Logical. If \code{TRUE}, information from all spectra are
+\item{joint.align}{Logical. If \code{TRUE}, information from all spectra are
 taken into account to align individual library.}
+
+\item{threshold.noise}{DEPRECEATED use \code{noise.thres} instead.}
+
+\item{combine}{DEPRECEATED use \code{joint.align} instead.}
+
+\item{add.noise, mult.noise}{additive and multiplicative noises. To set these
+noises, you can compute the standard deviation in a noisy area for
+\code{add.noise} or the standard deviation in a peak area for
+\code{mult.noise} when several spectra of the same sample are available.
+By default, \code{add.noise = 0.15} and \code{mult.noise = 0.172}}
+
+\item{quantif.method}{either \code{"FWER"} to perform an independent
+quantification (the method available in ASICS since the beginning),
+\code{"Lasso"} to perform a joint quantification (all the spectra together)
+or \code{"both"} to perform a joint quantification after the FWER selection
+of the independent quantification. More details can be founded in the
+user's guide.}
+
+\item{clean.thres}{if \code{quantif.method = "both"} the percentage of
+spectra in which the metabolite need to identified by the FWER selection.
+Default to 1, \emph{i.e.} metabolite is quantified if it was identified
+in at least 1\% of the spectra.}
+
+\item{ref.spectrum}{index of the reference spectrum used for the alignment.
+Default to \code{NULL}, \emph{i.e.} the reference spectrum is automatically
+detected.}
 
 \item{seed}{Random seed to control randomness in the algorithm (used in the
 estimation of the significativity of a given metabolite concentration).}
@@ -65,7 +98,8 @@ spectra_obj <- createSpectra(spectra_data)
 
 # Estimation of relative quantifications
 to_exclude <- matrix(c(4.5, 10), ncol = 2)
-resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude, combine = FALSE)
+resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude,
+                  joint.align = FALSE, quantif.method = "FWER")
 }
 \references{
 Tardivel P., Canlet C., Lefort G., Tremblay-Franco M., Debrauwer

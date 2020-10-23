@@ -191,17 +191,17 @@
 
 # Perform shift of one segment
 #' @importFrom stats approx
-.doShift <- function(specSeg, shiftStep, bInf, bSup){
+.doShift <- function(specSeg, shiftStep, bInf = NULL, bSup = NULL){
 
   newSegment <- specSeg
   if (shiftStep < 0) {
-    if (is.na(bSup)) bSup <- 0
+    if (is.null(bSup)) bSup <- 0
     approxEnd <- approx(x = seq_len(2), y = c(specSeg[length(specSeg)], bSup),
                         n = abs(shiftStep) + 2)$y
     newSegment <- c(specSeg[(abs(shiftStep) + 1):length(specSeg)],
                     approxEnd[2:(length(approxEnd) - 1)])
   } else if (shiftStep > 0) {
-    if (is.na(bInf)) bInf <- 0
+    if (is.null(bInf)) bInf <- 0
     approxStart <- approx(x = seq_len(2), y = c(bInf, specSeg[1]),
                           n = abs(shiftStep) + 2)$y
     newSegment <- c(approxStart[2:(length(approxStart) - 1)],
@@ -217,7 +217,7 @@
 #' @importFrom plyr llply
 .findReference <- function (spectra, ncores = 1, verbose) {
 
-  # similarity
+  # FFT correlation
   if (verbose) cat("Compute FFT correlations \n")
   simi_matrix <- bplapply(as.list(1:ncol(spectra)),
      function(x) vapply(1:ncol(spectra),
@@ -235,7 +235,7 @@
 }
 
 
-## Compute LCSS similarity
+## Compute FFT correlation
 .computeFFT <- function (refSpec, tarSpec) {
 
   M <- length(refSpec)
