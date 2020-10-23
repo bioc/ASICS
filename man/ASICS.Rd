@@ -42,9 +42,9 @@ included in the package (that contains 191 reference spectra) is used.}
 \item{joint.align}{Logical. If \code{TRUE}, information from all spectra are
 taken into account to align individual library.}
 
-\item{threshold.noise}{DEPRECEATED use \code{noise.thres} instead.}
+\item{threshold.noise}{DEPRECEATED, use \code{noise.thres} instead.}
 
-\item{combine}{DEPRECEATED use \code{joint.align} instead.}
+\item{combine}{DEPRECEATED, use \code{joint.align} instead.}
 
 \item{add.noise, mult.noise}{additive and multiplicative noises. To set these
 noises, you can compute the standard deviation in a noisy area for
