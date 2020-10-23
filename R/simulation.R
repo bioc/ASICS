@@ -20,7 +20,7 @@
 #' @importFrom stats rbinom runif rnorm
 #'
 #' @examples
-#' spectra <- simulate_spectra(n.spectra = 100)
+#' spectra <- simulate_spectra(n.spectra = 10)
 simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
                              metab.different = 4, add.noise = 0.07,
                              mult.noise = 0.09) {
@@ -98,6 +98,7 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
 
 ## Create library shifts
 #' @keywords internal
+#' @importFrom stats rnbinom
 .shift_spec <- function(idx, max_points, coeff_ind) {
   spectrum <- pure_library@spectra[, idx]
   coeff_spec <- coeff_ind[idx]
@@ -160,5 +161,6 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
 
   spectrum_coeff <- spectrum * coeff_spec * pure_library@nb.protons[idx]
 
-  return(list(spectrum = spectrum_coeff, raw_spectrum = spectrum, shift = global_shift))
+  return(list(spectrum = spectrum_coeff, raw_spectrum = spectrum,
+              shift = global_shift))
 }
