@@ -4,13 +4,15 @@
 \name{pure_library}
 \alias{pure_library}
 \title{Pure spectra library}
-\format{A \linkS4class{PureLibrary} object with 4 entries:
+\format{
+A \linkS4class{PureLibrary} object with 4 entries:
 \describe{
   \item{sample.name}{names of the metabolites}
   \item{ppm.grid}{common grid for all spectra}
   \item{spectra}{data frame with each pure metabolite spectrum in column}
   \item{nb.protons}{number of protons of each metabolite}
-}}
+}
+}
 \description{
 The 1D 1H NMR spectra of 191 reference compounds were collected to build the
 default library of reference spectra. These compounds have been prepared and

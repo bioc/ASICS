@@ -13,8 +13,28 @@
 #' the reference spectra (pure metabolite spectra). If \code{NULL}, the library
 #' included in the package (that contains 191 reference spectra) is used.
 #' @param noise.thres Threshold for signal noise. Default to 0.02.
+#' @param threshold.noise DEPRECEATED, use \code{noise.thres} instead.
 #' @param joint.align Logical. If \code{TRUE}, information from all spectra are
 #' taken into account to align individual library.
+#' @param combine DEPRECEATED, use \code{joint.align} instead.
+#' @param add.noise,mult.noise additive and multiplicative noises. To set these
+#' noises, you can compute the standard deviation in a noisy area for
+#' \code{add.noise} or the standard deviation in a peak area for
+#' \code{mult.noise} when several spectra of the same sample are available.
+#' By default, \code{add.noise = 0.15} and \code{mult.noise = 0.172}
+#' @param quantif.method either \code{"FWER"} to perform an independent
+#' quantification (the method available in ASICS since the beginning),
+#' \code{"Lasso"} to perform a joint quantification (all the spectra together)
+#' or \code{"both"} to perform a joint quantification after the FWER selection
+#' of the independent quantification. More details can be founded in the
+#' user's guide.
+#' @param clean.thres if \code{quantif.method = "both"} the percentage of
+#' spectra in which the metabolite need to identified by the FWER selection.
+#' Default to 1, \emph{i.e.} metabolite is quantified if it was identified
+#' in at least 1\% of the spectra.
+#' @param ref.spectrum index of the reference spectrum used for the alignment.
+#' Default to \code{NULL}, \emph{i.e.} the reference spectrum is automatically
+#' detected.
 #' @param seed Random seed to control randomness in the algorithm (used in the
 #' estimation of the significativity of a given metabolite concentration).
 #' @param ncores Number of cores used in parallel evaluation. Default to
@@ -50,15 +70,17 @@
 #'
 #' # Estimation of relative quantifications
 #' to_exclude <- matrix(c(4.5, 10), ncol = 2)
-#' resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude, joint.align = FALSE)
+#' resASICS <- ASICS(spectra_obj, exclusion.areas = to_exclude,
+#'                   joint.align = FALSE, quantif.method = "FWER")
 ASICS <- function(spectra_obj,
                   exclusion.areas = matrix(c(4.5, 5.1), ncol = 2),
                   max.shift = 0.02, pure.library = NULL,
-                  noise.thres = 0.02, joint.align = TRUE, seed = 1234,
-                  ncores = 1, verbose = TRUE,
+                  noise.thres = 0.02, joint.align = TRUE,
+                  threshold.noise = NULL, combine = NULL,
                   add.noise = 0.15, mult.noise = 0.172,
-                  quantif.method = c("FWER", "Lasso", "both"),
-                  clean.thres = 0, ref.spectrum = NULL, alignment.method = "asics") {
+                  quantif.method = c("FWER", "Lasso", "both")[1],
+                  clean.thres = 1, ref.spectrum = NULL,
+                  seed = 1234, ncores = 1, verbose = TRUE) {
 
   if(!is.null(exclusion.areas) &&
      (!is.matrix(exclusion.areas) | ncol(exclusion.areas) != 2)){
@@ -67,6 +89,16 @@ ASICS <- function(spectra_obj,
 
   if(max.shift < 0){
     stop("'max.shift' must be non negative.")
+  }
+
+  if(!is.null(threshold.noise)){
+    message("'threshold.noise' is depreceated, use 'noise.thres' instead")
+    noise.thres <- threshold.noise
+  }
+
+  if(!is.null(combine)){
+    message("'combine' is depreceated, use 'joint.align' instead")
+    joint.align <- combine
   }
 
   if(noise.thres < 0){
@@ -81,8 +113,7 @@ ASICS <- function(spectra_obj,
   res_estimation <- .ASICSInternal(spectra_obj, exclusion.areas, max.shift,
                                    pure.library, noise.thres,  seed, ncores,
                                    joint.align, verbose, add.noise, mult.noise,
-                                   quantif.method, clean.thres, ref.spectrum,
-                                   alignment.method)
+                                   quantif.method, clean.thres, ref.spectrum)
 
   return(res_estimation)
 }
@@ -97,8 +128,7 @@ ASICS <- function(spectra_obj,
                            joint.align = TRUE, verbose = TRUE,
                            add.noise = 0.15, mult.noise = 0.172,
                            quantif.method = c("FWER", "Lasso", "both"),
-                           clean.thres = 1, ref.spectrum = NULL,
-                           alignment.method = "asics") {
+                           clean.thres = 1, ref.spectrum = NULL) {
 
     # seed and parallel environment
     set.seed(seed)
@@ -183,25 +213,11 @@ ASICS <- function(spectra_obj,
       if (quantif.method %in% c("FWER", "Lasso", "both")) {
         if (verbose) cat("Translate library \n")
         if (length(spectra_list) == 1 | !joint.align) {
-          if(alignment.method == "speaq") {
-            # spectra_obj <- bplapply(spectra_obj, .translateLibrary_speaq,
-            #                         nb_points_shift[length(nb_points_shift)],
-            #                         max.shift[length(max.shift)],
-            #                         BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-            #                                              verbose))
-          } else if(alignment.method == "icoshift") {
-            spectra_obj <- bplapply(spectra_obj, .translateLibrary_icoshift,
+          spectra_obj <- bplapply(spectra_obj, .translateLibrary,
                                     nb_points_shift[length(nb_points_shift)],
                                     max.shift[length(max.shift)],
                                     BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
                                                          verbose))
-          } else {
-            spectra_obj <- bplapply(spectra_obj, .translateLibrary,
-                                    nb_points_shift[length(nb_points_shift)],
-                                    max.shift[length(max.shift)],
-                                    BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
-                                                         verbose))
-          }
         } else {
           # spectra binning
           spectra_to_bin <- data.frame(as.matrix(getSpectra(spectra_obj_raw)))
@@ -228,11 +244,10 @@ ASICS <- function(spectra_obj,
       #### Localized deformations of pure spectra ####
       if (quantif.method %in% c("FWER", "both")) {
         if (verbose) cat("Deform library peaks \n")
-        if(alignment.method == "asics") {
         spectra_obj <- bplapply(spectra_obj, .deformLibrary,
                                 BPPARAM = .createEnv(ncores, length(spectra_obj_raw),
                                                      verbose))
-        }
+
       }
 
     #-----------------------------------------------------------------------------

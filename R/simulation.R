@@ -9,6 +9,8 @@
 #' (default to 0.5).
 #' @param metab.different number of different metabolites between each complex
 #' spectra (default to 4).
+#' @param add.noise,mult.noise additive and multiplicative noises. By default,
+#' \code{add.noise = 0.15} and \code{mult.noise = 0.172}
 #'
 #' @return A list with a data frame of simulated spectra in columns and
 #' a data frame of simulated quantifications.
@@ -20,8 +22,8 @@
 #' @examples
 #' spectra <- simulate_spectra(n.spectra = 100)
 simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
-                             metab.different = 4, add_noise = 0.07,
-                             mult_noise = 0.09) {
+                             metab.different = 4, add.noise = 0.07,
+                             mult.noise = 0.09) {
   # number of metabolite in the library
   p <- length(pure_library)
 
@@ -68,8 +70,8 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
     spectra[, i] <- apply(shift_lib, 1, sum)
     spectra[, i] <- spectra[, i]  / .AUC(pure_library@ppm.grid, spectra[, i])
     spectra[, i] <- spectra[, i] + spectra[, i] *
-      rnorm(length(spectra[, i]), 0, mult_noise^2) +
-      rnorm(length(spectra[, i]), 0, add_noise^2)
+      rnorm(length(spectra[, i]), 0, mult.noise^2) +
+      rnorm(length(spectra[, i]), 0, add.noise^2)
   }
 
   spectra <- as.data.frame(spectra)

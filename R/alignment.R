@@ -217,7 +217,7 @@
 #' @importFrom plyr llply
 .findReference <- function (spectra, ncores = 1, verbose) {
 
-  # similarity
+  # FFT correlation
   if (verbose) cat("Compute FFT correlations \n")
   simi_matrix <- bplapply(as.list(1:ncol(spectra)),
      function(x) vapply(1:ncol(spectra),
@@ -235,7 +235,7 @@
 }
 
 
-## Compute LCSS similarity
+## Compute FFT correlation
 .computeFFT <- function (refSpec, tarSpec) {
 
   M <- length(refSpec)
