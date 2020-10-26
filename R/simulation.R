@@ -1,14 +1,14 @@
 #' Simulate a set of spectra
 #'
-#' Simulate a set of spectra base on the default library with shifts
+#' Simulate a set of spectra based on the default library with shifts
 #'
 #' @param n.spectra Number of spectra to simulate.
 #' @param max.shift Maximum shift allowed for artificial deformation of pure
 #' spectra (default to 0.02).
 #' @param metab.percent Percentage of present metabolites in complex spectra
 #' (default to 0.5).
-#' @param metab.different number of different metabolites between each complex
-#' spectra (default to 4).
+#' @param metab.different Number of metabolites that are different between each 
+#' complex spectra (default to 4).
 #' @param add.noise,mult.noise additive and multiplicative noises. By default,
 #' \code{add.noise = 0.15} and \code{mult.noise = 0.172}
 #'
@@ -143,7 +143,7 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
   if (nrow(peaks_extremities) > 0) {
     # deform on each connected component
     for(peak in seq_len(nrow(peaks_extremities))){
-      # simule a parameter for deformation
+      # simulate a parameter for deformation
       a <- rnorm(1, mean = 0, sd = 0.09)
       a[a < -1] <- -1
       a[a > 1] <- 1

@@ -13,10 +13,10 @@
 #' the reference spectra (pure metabolite spectra). If \code{NULL}, the library
 #' included in the package (that contains 191 reference spectra) is used.
 #' @param noise.thres Threshold for signal noise. Default to 0.02.
-#' @param threshold.noise DEPRECEATED, use \code{noise.thres} instead.
-#' @param joint.align Logical. If \code{TRUE}, information from all spectra are
+#' @param threshold.noise DEPRECATED, use \code{noise.thres} instead.
+#' @param joint.align Logical. If \code{TRUE}, information from all spectra is
 #' taken into account to align individual library.
-#' @param combine DEPRECEATED, use \code{joint.align} instead.
+#' @param combine DEPRECATED, use \code{joint.align} instead.
 #' @param add.noise,mult.noise additive and multiplicative noises. To set these
 #' noises, you can compute the standard deviation in a noisy area for
 #' \code{add.noise} or the standard deviation in a peak area for
@@ -28,8 +28,8 @@
 #' or \code{"both"} to perform a joint quantification after the FWER selection
 #' of the independent quantification. More details can be founded in the
 #' user's guide.
-#' @param clean.thres if \code{quantif.method = "both"} the percentage of
-#' spectra in which the metabolite need to identified by the FWER selection.
+#' @param clean.thres if \code{quantif.method == "both"} the percentage of
+#' spectra in which the metabolite needs to be identified by the FWER selection.
 #' Default to 1, \emph{i.e.} metabolite is quantified if it was identified
 #' in at least 1\% of the spectra.
 #' @param ref.spectrum index of the reference spectrum used for the alignment.
@@ -39,11 +39,11 @@
 #' estimation of the significativity of a given metabolite concentration).
 #' @param ncores Number of cores used in parallel evaluation. Default to
 #' \code{1}.
-#' @param verbose A boolean value to allow print out process information.
+#' @param verbose A Boolean value to allow print out process information.
 #'
 #' @note Since version 2.3.1 small changes were applied in order to improve the
-#' speed of metabolite selection algorithm. To reproduce previous results, you
-#' have to use an older version.
+#' speed of metabolite selection algorithm, which can slightly impact outputs
+#' of the method.
 #'
 #' @return An object of type \linkS4class{ASICSResults} containing the
 #' quantification results.
@@ -78,10 +78,12 @@ ASICS <- function(spectra_obj,
                   noise.thres = 0.02, joint.align = TRUE,
                   threshold.noise = NULL, combine = NULL,
                   add.noise = 0.15, mult.noise = 0.172,
-                  quantif.method = c("FWER", "Lasso", "both")[1],
+                  quantif.method = c("FWER", "Lasso", "both"),
                   clean.thres = 1, ref.spectrum = NULL,
                   seed = 1234, ncores = 1, verbose = TRUE) {
 
+  quantif.method <- match.arg(quantif.method)
+  
   if(!is.null(exclusion.areas) &&
      (!is.matrix(exclusion.areas) | ncol(exclusion.areas) != 2)){
     stop("'exclusion.areas' must be a matrix with 2 columns.")
@@ -208,7 +210,7 @@ ASICS <- function(spectra_obj,
     }
 
       #-----------------------------------------------------------------------------
-      #### Find the best translation between each pure spectra and mixture ####
+      #### Find the best shift between each pure spectra and mixture ####
       #and sort metabolites by regression residuals
       if (quantif.method %in% c("FWER", "Lasso", "both")) {
         if (verbose) cat("Translate library \n")
@@ -263,7 +265,7 @@ ASICS <- function(spectra_obj,
     #-----------------------------------------------------------------------------
     #### Cleaning step (on FWER results): remove metabolites that cannot ####
     #### belong to the mixture ####
-    if (quantif.method %in% c("both")) {
+    if (quantif.method == "both") {
       if (verbose) cat("Remove metabolites that cannot belong to the mixture \n")
 
       metab_list <- unlist(bplapply(spectra_obj,
