@@ -130,25 +130,28 @@ spectra_obj <- createSpectra(spectra_norm)
 
 Identification and quantification of metabolites can now be carried out using 
 only the function `ASICS`. All the steps described in the following figure are
-included :
+included:
 
 ![Steps of the quantification workflow](./workflow_quantif.png)
 
 Recently, new methods for reference library alignment and metabolite 
-quantification were added. Thus, multiple scenarios can be performed :
+quantification were added. Thus, multiple scenarios can be performed:
 
 ![Scenarios available in ASICS](./scenarii.png)
-In red, this is the algorithm available in the first version of the package.
-Now, to use it, you have to set `joint.align = FALSE` and `quantif.method = "FWER"`.
-To perform a joint alignment (blue, green and yellow scenarios), `joint.align`
-need to be set to `TRUE`. To perform a joint quantification just after the
-alignment use `joint.align = "Lasso"`. Finally, to perform a joint quantification
-only on metabolites identified with the independent quantification use 
-`joint.align = "both"`.
+The method provided in the first version of the package is given in red. It can
+now be used by setting `joint.align = FALSE` and `quantif.method = "FWER"`. To
+perform a joint alignment (blue, green and yellow scenarios), `joint.align`
+needs to be set to `TRUE`. The yellow scenario that performs joint 
+quantification based on a simple joint alignment is obtained by additionally 
+setting `quantif.method = "Lasso"`. Finally, the green scenario performs a joint
+quantification using metabolites identified with a first step consisting of 
+independent quantification. It is obtained by setting `quantif.method = "both"`.
 
-With `joint.align = "both"`, it also possible to limit the number of 
-identified metabolites using `clean.thres`. If `clean.thres = 10`, only the
-metabolites identified in at least 10% of the spectra identified.
+With `quantif.method = "both"`, the number of identified metabolites can be
+controlled using `clean.thres`. If `clean.thres = 10`, only the metabolites 
+identified in at least 10% of the complex spectra (during the first independant
+quantification step) are used in the joint quantification. 
+
 More details on these new algorithms can be found in Lefort *et al.* (2020).
 
 `ASICS` function takes approximately 2 minutes per 
