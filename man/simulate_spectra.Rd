@@ -22,8 +22,8 @@ spectra (default to 0.02).}
 \item{metab.percent}{Percentage of present metabolites in complex spectra
 (default to 0.5).}
 
-\item{metab.different}{number of different metabolites between each complex
-spectra (default to 4).}
+\item{metab.different}{Number of metabolites that are different between each 
+complex spectra (default to 4).}
 
 \item{add.noise, mult.noise}{additive and multiplicative noises. By default,
 \code{add.noise = 0.15} and \code{mult.noise = 0.172}}
@@ -33,7 +33,7 @@ A list with a data frame of simulated spectra in columns and
 a data frame of simulated quantifications.
 }
 \description{
-Simulate a set of spectra base on the default library with shifts
+Simulate a set of spectra based on the default library with shifts
 }
 \examples{
 spectra <- simulate_spectra(n.spectra = 10)

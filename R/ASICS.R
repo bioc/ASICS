@@ -83,7 +83,7 @@ ASICS <- function(spectra_obj,
                   seed = 1234, ncores = 1, verbose = TRUE) {
 
   quantif.method <- match.arg(quantif.method)
-  
+
   if(!is.null(exclusion.areas) &&
      (!is.matrix(exclusion.areas) | ncol(exclusion.areas) != 2)){
     stop("'exclusion.areas' must be a matrix with 2 columns.")
@@ -94,12 +94,12 @@ ASICS <- function(spectra_obj,
   }
 
   if(!is.null(threshold.noise)){
-    message("'threshold.noise' is depreceated, use 'noise.thres' instead")
+    message("'threshold.noise' is deprecated, use 'noise.thres' instead")
     noise.thres <- threshold.noise
   }
 
   if(!is.null(combine)){
-    message("'combine' is depreceated, use 'joint.align' instead")
+    message("'combine' is deprecated, use 'joint.align' instead")
     joint.align <- combine
   }
 
