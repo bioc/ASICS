@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
     toc_float: true
-vignette: |
+vignette: >
   %\VignetteIndexEntry{ASICS}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
@@ -115,10 +115,10 @@ spectra_norm <- normaliseSpectra(spectra_data_txt, type.norm = "pqn")
 ```
 
 The alignment algorithm is based on Vu et al. (2011). To find the reference 
-spectrum, the LCSS similarity is used (Vlachos et al. (2002)). Then the 
+spectrum, the FFT cross-correlation is used. Then the 
 alignment is performed using the FFT cross-correlation and a hierarchical
 classification.
-```{r alignment, results='hide'}
+```{r alignment, results='hide', cache=TRUE}
 spectra_align <- alignSpectra(spectra_norm)
 ```
 
@@ -129,7 +129,32 @@ spectra_obj <- createSpectra(spectra_norm)
 ```
 
 Identification and quantification of metabolites can now be carried out using 
-only the function `ASICS`. This function takes approximately 2 minutes per 
+only the function `ASICS`. All the steps described in the following figure are
+included:
+
+![Steps of the quantification workflow](./workflow_quantif.png)
+
+Recently, new methods for reference library alignment and metabolite 
+quantification were added. Thus, multiple scenarios can be performed:
+
+![Scenarios available in ASICS](./scenarii.png)
+The method provided in the first version of the package is given in red. It can
+now be used by setting `joint.align = FALSE` and `quantif.method = "FWER"`. To
+perform a joint alignment (blue, green and yellow scenarios), `joint.align`
+needs to be set to `TRUE`. The yellow scenario that performs joint 
+quantification based on a simple joint alignment is obtained by additionally 
+setting `quantif.method = "Lasso"`. Finally, the green scenario performs a joint
+quantification using metabolites identified with a first step consisting of 
+independent quantification. It is obtained by setting `quantif.method = "both"`.
+
+With `quantif.method = "both"`, the number of identified metabolites can be
+controlled using `clean.thres`. If `clean.thres = 10`, only the metabolites 
+identified in at least 10% of the complex spectra (during the first independant
+quantification step) are used in the joint quantification. 
+
+More details on these new algorithms can be found in Lefort *et al.* (2020).
+
+`ASICS` function takes approximately 2 minutes per 
 spectrum to run. To control randomness in the algorithm (used in the estimation 
 of the significativity of a given metabolite concentration), the `set.seed` 
 parameter can be used.
@@ -216,7 +241,7 @@ plot(resTests)
 
 An analysis on buckets can also be performed. An alignment is required before 
 the spectrum bucketing:
-```{r align_and_binning, results='hide'}
+```{r align_and_binning, results='hide', cache=TRUE}
 spectra_align <- alignSpectra(spectra_norm)
 spectra_bucket <- binning(spectra_align)
 ```
@@ -254,6 +279,9 @@ plot(resOPLSDA_buckets, graph = "buckets")
 
 # References 
 
+Lefort G., Liaubet L., Marty-Gasset N., Canlet C., Vialaneix N., Servien R. \emph{Joint automatic metabolite identification and quantification of a set of $^1$H~NMR spectra}. 2020. Pre-print, https://www.biorxiv.org/content/10.1101/2020.10.08.331090v1.
+
+
 Tardivel P., Canlet C., Lefort G., Tremblay-Franco M., Debrauwer L., Concordet 
 D., Servien R. (2017). ASICS: an automatic method for identification and 
 quantification of metabolites in complex 1D 1H NMR spectra. *Metabolomics*,
@@ -267,10 +295,6 @@ changes in type 2 diabetes in mouse, rat, and human. *Physiological genomics*,
 Wang, K. C., Wang, S. Y., Kuo, C. H., Tseng, Y. J. (2013). Distribution-based 
 classification method for baseline correction of metabolomic 1D proton nuclear 
 magnetic resonance spectra. *Analytical Chemistry*, **85**(2), 1231–1239.
-
-Vlachos, M., Kollios, G., & Gunopulos, D. (2002). Discovering similar 
-multidimensional trajectories. In *Data Engineering, 2002. Proceedings. 18th* 
-*International Conference on* (pp. 673-684). IEEE.
 
 
 Vu, T. N., Valkenborg, D., Smets, K., Verwaest, K. A., Dommisse, R., Lemiere, 

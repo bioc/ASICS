@@ -15,7 +15,7 @@ ASICS(
   combine = NULL,
   add.noise = 0.15,
   mult.noise = 0.172,
-  quantif.method = c("FWER", "Lasso", "both")[1],
+  quantif.method = c("FWER", "Lasso", "both"),
   clean.thres = 1,
   ref.spectrum = NULL,
   seed = 1234,
@@ -39,12 +39,12 @@ included in the package (that contains 191 reference spectra) is used.}
 
 \item{noise.thres}{Threshold for signal noise. Default to 0.02.}
 
-\item{joint.align}{Logical. If \code{TRUE}, information from all spectra are
+\item{joint.align}{Logical. If \code{TRUE}, information from all spectra is
 taken into account to align individual library.}
 
-\item{threshold.noise}{DEPRECEATED, use \code{noise.thres} instead.}
+\item{threshold.noise}{DEPRECATED, use \code{noise.thres} instead.}
 
-\item{combine}{DEPRECEATED, use \code{joint.align} instead.}
+\item{combine}{DEPRECATED, use \code{joint.align} instead.}
 
 \item{add.noise, mult.noise}{additive and multiplicative noises. To set these
 noises, you can compute the standard deviation in a noisy area for
@@ -59,8 +59,8 @@ or \code{"both"} to perform a joint quantification after the FWER selection
 of the independent quantification. More details can be founded in the
 user's guide.}
 
-\item{clean.thres}{if \code{quantif.method = "both"} the percentage of
-spectra in which the metabolite need to identified by the FWER selection.
+\item{clean.thres}{if \code{quantif.method == "both"} the percentage of
+spectra in which the metabolite needs to be identified by the FWER selection.
 Default to 1, \emph{i.e.} metabolite is quantified if it was identified
 in at least 1\% of the spectra.}
 
@@ -74,7 +74,7 @@ estimation of the significativity of a given metabolite concentration).}
 \item{ncores}{Number of cores used in parallel evaluation. Default to
 \code{1}.}
 
-\item{verbose}{A boolean value to allow print out process information.}
+\item{verbose}{A Boolean value to allow print out process information.}
 }
 \value{
 An object of type \linkS4class{ASICSResults} containing the
@@ -86,8 +86,8 @@ pure metabolite spectra. The method is presented in Tardivel et al. (2017).
 }
 \note{
 Since version 2.3.1 small changes were applied in order to improve the
-speed of metabolite selection algorithm. To reproduce previous results, you
-have to use an older version.
+speed of metabolite selection algorithm, which can slightly impact outputs
+of the method.
 }
 \examples{
 # Import data and create object
