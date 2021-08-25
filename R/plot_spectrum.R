@@ -69,17 +69,19 @@
   spectra <- spectra[spectra$grid > xlim[1] &
                        spectra$grid < xlim[2], ]
 
-  spectra$which_mix <- factor(spectra$which_mix)
-  spectra$which_mix <- relevel(spectra$which_mix, "Original spectrum")
+  spectra$which_mix <- ordered(spectra$which_mix, c("Original spectrum",
+                                                    "Reconstructed spectrum",
+                                                    add.metab,
+                                                    paste("Pre-processed", add.metab)))
   # plot with ggplot2
   p1 <- ggplot(spectra) +
     geom_line(aes_string(x = "grid", y = "mixture",
                          colour = "which_mix"), na.rm = TRUE) +
     theme_bw() +
     labs(x = "Chemical shift (ppm)", y = "Intensity") +
-    scale_x_reverse(limits = rev(xlim)) +
-    ylim(ylim) +
-    scale_color_manual(name = "", values = c("black", "blue", "red", "orange"))
+    scale_color_manual(name = "", values = c("black", "blue", "red", "orange")) +
+    ylim(ylim) + scale_x_reverse(limits = rev(xlim))
+
 
   return(p1)
 }
