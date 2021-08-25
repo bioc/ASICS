@@ -125,7 +125,7 @@ spectra_align <- alignSpectra(spectra_norm)
 Finally, from the data frame, a `Spectra` object is created. This is a required 
 step for the quantification.
 ```{r create_spectra, results='hide'}
-spectra_obj <- createSpectra(spectra_norm)
+spectra_obj <- createSpectra(spectra_align)
 ```
 
 Identification and quantification of metabolites can now be carried out using 

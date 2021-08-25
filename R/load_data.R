@@ -722,6 +722,9 @@ binning <- function(spectra, bin = 0.01,
 
   # normalisation
   spectra_norm <- buckets_values
+  rownames(spectra_norm) <- buckets
+  colnames(spectra_norm) <- colnames(spectra)
+
   if (normalisation) {
     norm.param <- c(list(spectra = buckets_values,
                          verbose = verbose),

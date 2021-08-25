@@ -112,14 +112,17 @@ setMethod(
       stop("Sample names need to be unique.")
     }
 
+
     # first grid for all objects
-    for (i in 2:length(elements)) {
-      if (!any(elements[[1]]@ppm.grid == elements[[i]]@ppm.grid)) {
-        elements[[i]]@spectra <- apply(elements[[i]]@spectra, 2, .changeGrid,
-                                       elements[[i]]@ppm.grid,
-                                       elements[[1]]@ppm.grid)
+    for(i in 2:length(elements)){
+      if(!any(elements[[1]]@ppm.grid == elements[[i]]@ppm.grid)){
+        elements[[i]]@spectra <- Matrix(apply(elements[[i]]@spectra, 2, .changeGrid,
+                                              elements[[i]]@ppm.grid,
+                                              elements[[1]]@ppm.grid))
+        elements[[i]]@ppm.grid <- elements[[1]]@ppm.grid
       }
     }
+
 
     return(new("PureLibrary",
                sample.name = do.call("c", lapply(elements, getSampleName)),
