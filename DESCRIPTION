@@ -44,7 +44,6 @@ Collate:
     'ASICS.R'
     'Spectra-class.R'
     'ASICSResults-class.R'
-    'ASICS_weight.R'
     'AnalysisResults-class.R'
     'PureLibrary-class.R'
     'alignment.R'
