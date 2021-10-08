@@ -199,8 +199,9 @@ ASICS <- function(spectra_obj,
                                                          length(spectra_obj_raw),
                                                          verbose)))
       metab_list_th <-
-        names(table(metab_list)[table(metab_list) >= clean.thres])
-
+        names(table(metab_list)[table(metab_list) >= 
+                                  length(spectra_obj) * clean.thres / 100])
+print(metab_list_th)
       spectra_obj <- bplapply(spectra_obj,
             function(x) {
               x$cleaned_library <-
@@ -274,7 +275,8 @@ ASICS <- function(spectra_obj,
                                                          length(spectra_obj_raw),
                                                          verbose)))
       metab_list_th <-
-        names(table(metab_list)[table(metab_list) >= clean.thres])
+        names(table(metab_list)[table(metab_list)  >= 
+                                  length(spectra_obj) * clean.thres / 100])
     }
 
   #-----------------------------------------------------------------------------
