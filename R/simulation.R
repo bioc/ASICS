@@ -25,14 +25,14 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
                              metab.different = 4, add.noise = 0.07,
                              mult.noise = 0.09) {
   # number of metabolite in the library
-  p <- length(pure_library)
+  p <- length(ASICS::pure_library)
 
   # present metabolites in the complex mixture
   present <- rbinom(p, 1, metab.percent)
   # for each sample : add or remove some metabolites
   present_all <- t(ldply(as.list(1:n.spectra),
       function(x) {
-        to_add_or_remove <- sample(1:length(pure_library), metab.different)
+        to_add_or_remove <- sample(1:length(ASICS::pure_library), metab.different)
         present[to_add_or_remove] <-
           ifelse(present[to_add_or_remove] == 0, 1, 0)
         return(present)} ))
@@ -53,9 +53,9 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
   ##### Simulate shifted library and create simulated spectra
 
   # maximum shift in points
-  max_points <- max.shift / diff(pure_library@ppm.grid)[1] #max shift in points
+  max_points <- max.shift / diff(ASICS::pure_library@ppm.grid)[1] #max shift in points
 
-  spectra <- matrix(NA, nrow = length(pure_library@ppm.grid), ncol = n.spectra)
+  spectra <- matrix(NA, nrow = length(ASICS::pure_library@ppm.grid), ncol = n.spectra)
 
   all_shift <- matrix(NA, nrow = p, ncol = n.spectra)
   all_shift_lib <- list()
@@ -68,14 +68,14 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
     all_shift[, i] <- laply(as.list(1:p), function(x) res[[x]]$shift)
 
     spectra[, i] <- apply(shift_lib, 1, sum)
-    spectra[, i] <- spectra[, i]  / .AUC(pure_library@ppm.grid, spectra[, i])
+    spectra[, i] <- spectra[, i]  / .AUC(ASICS::pure_library@ppm.grid, spectra[, i])
     spectra[, i] <- spectra[, i] + spectra[, i] *
       rnorm(length(spectra[, i]), 0, mult.noise^2) +
       rnorm(length(spectra[, i]), 0, add.noise^2)
   }
 
   spectra <- as.data.frame(spectra)
-  rownames(spectra) <- pure_library@ppm.grid
+  rownames(spectra) <- ASICS::pure_library@ppm.grid
 
   return(list(spectra = spectra, sim_quantif = coeff, all_shift = all_shift,
               all_shift_lib = all_shift_lib))
@@ -100,7 +100,7 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
 #' @keywords internal
 #' @importFrom stats rnbinom
 .shift_spec <- function(idx, max_points, coeff_ind) {
-  spectrum <- pure_library@spectra[, idx]
+  spectrum <- ASICS::pure_library@spectra[, idx]
   coeff_spec <- coeff_ind[idx]
 
   pos_neg <- rbinom(1, 1, 1/2)
@@ -124,7 +124,7 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
   peaks_extremities <-
     cbind(vapply(min_extremities, max, 1,
                  FUN.VALUE = numeric(1)),
-          vapply(max_extremities, min, length(pure_library@ppm.grid),
+          vapply(max_extremities, min, length(ASICS::pure_library@ppm.grid),
                  FUN.VALUE = numeric(1)))
 
   # remove overlapping
@@ -153,13 +153,13 @@ simulate_spectra <- function(n.spectra, max.shift = 0.02, metab.percent = 0.5,
       # peak to deform
       to_deform <- spectrum[peak_area]
       # grid to deform
-      grid_to_deform <- pure_library@ppm.grid[peak_area]
+      grid_to_deform <- ASICS::pure_library@ppm.grid[peak_area]
 
       spectrum[peak_area] <- .deforme(grid_to_deform, to_deform, a)
     }
   }
 
-  spectrum_coeff <- spectrum * coeff_spec * pure_library@nb.protons[idx]
+  spectrum_coeff <- spectrum * coeff_spec * ASICS::pure_library@nb.protons[idx]
 
   return(list(spectrum = spectrum_coeff, raw_spectrum = spectrum,
               shift = global_shift))
