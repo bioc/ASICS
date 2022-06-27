@@ -3,7 +3,7 @@ Type: Package
 Title: Automatic Statistical Identification in Complex Spectra
 Version: 2.12.1
 Authors@R: c(
-    person("Gaëlle", "Lefort", email = "gaelle.lefort@inra.fr", role = c("aut", "cre")),
+    person("Gaëlle", "Lefort", email = "gaelle.lefort@inrae.fr", role = c("aut", "cre")),
     person("Rémi", "Servien", email = "remi.servien@inrae.fr", role = "aut"),
     person("Patrick", "Tardivel", role = "aut"),
     person("Nathalie", "Vialaneix", email = "nathalie.vialaneix@inrae.fr", role = "aut"))
