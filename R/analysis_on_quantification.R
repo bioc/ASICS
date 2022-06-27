@@ -166,7 +166,7 @@ pca <- function(analysis_data, scale.unit = TRUE,
   # PCA
   resPCA <- opls(x = t(assay(analysis_data, 1)),
                  predI = min(10, dim(analysis_data)[2]), scaleC = scale_unit,
-                 info.txtC = NULL, fig.pdfC = NULL)
+                 info.txtC = 'none', fig.pdfC = 'none')
 
   resPCA@suppLs$yModelMN <- colData(analysis_data)
 
