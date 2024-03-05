@@ -113,7 +113,7 @@
   for (i in 1:nrow(C))  {
     Sig22_ <- solve(C[-i,-i])
     s2 <- C[i, i] - C[i, -i] %*% Sig22_ %*% C[-i,i]
-    sel <- which(rowSums((Y[, -i] > lim1[-i])) == 0)
+    sel <- which(rowSums((as.data.frame(Y[, -i]) > lim1[-i])) == 0)
     m <- t(C[i, -i] %*% Sig22_ %*% t(Y[sel, -i]))
     grad[i] <- mean(dnorm(as.numeric(Y[sel,i]), as.numeric(m),
                           rep(s2, length(m))))
